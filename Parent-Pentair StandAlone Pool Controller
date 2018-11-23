@@ -19,14 +19,7 @@ metadata {
 	definition (name: "Parent-Pentair StandAlone Pool Controller", namespace: "burninmoney", author: "Burnin Money", oauth: true) {
         //capability
         capability "Switch"
-    	capability "Polling"        
-        capability "Refresh"
-       //commands
-//        command "poolToggle"
- //       command "allPumpsToggle"
- //       command "highspeedToggle"
- //       command "displayCntr"
-//        command "Toggle" ,["string"]
+		attribute "pump", "string"
 	}
    
     preferences {
@@ -35,10 +28,10 @@ metadata {
        		input "controllerPort", "port", title: "Controller port", required: true, defaultValue: "3000", displayDuringSetup: true
             input "username", "string", title:"Username", description: "username", required: true, displayDuringSetup: true
             input "password", "password", title:"Password", description: "Password", required: true, displayDuringSetup: true
-            input "Speed Preset 1", "number", title: "Speed Preset 1", required: true, defaultValue: "2200", displayDuringSetup: true
-            input "Speed Preset 2", "number", title: "Speed Preset 2", required: true, defaultValue: "2450", displayDuringSetup: true
-            input "Speed Preset 3", "number", title: "Speed Preset 3", required: true, defaultValue: "2550", displayDuringSetup: true
-            input "Speed Preset 4", "number", title: "Speed Preset 4", required: true, defaultValue: "2700", displayDuringSetup: true
+            input "SpeedPreset1", "number", title: "Speed Preset 1", required: true, defaultValue: "2200", displayDuringSetup: true
+            input "SpeedPreset2", "number", title: "Speed Preset 2", required: true, defaultValue: "2450", displayDuringSetup: true
+            input "SpeedPreset3", "number", title: "Speed Preset 3", required: true, defaultValue: "2550", displayDuringSetup: true
+            input "SpeedPreset4", "number", title: "Speed Preset 4", required: true, defaultValue: "2700", displayDuringSetup: true
             }
         } 
     
@@ -49,95 +42,46 @@ metadata {
 	tiles (scale: 2) {
 
 		standardTile("switch", "device.switch", width: 2, height: 2, decoration: "flat") {
-    	//state "off", label: '${currentValue}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff", nextState:"on"
-    	//state "on", label: '${currentValue}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc", nextState:"off"
 		state "on", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc", nextState:"turningOff"
         state "off", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff", nextState:"turningOn"
     	state "turningOn", label: '${name}', action: "switch.off", icon: "st.switches.switch.on", backgroundColor: "#00a0dc", nextState:"turningOff"
         state "turningOff", label: '${name}', action: "switch.on", icon: "st.switches.switch.off", backgroundColor: "#ffffff", nextState:"turningOn"
 		}
-
-        standardTile("refresh1", "device.refresh", width: 2, height: 2, canChangeBackground: true) {
-        	state "Idle", label:'refresh', action:"refresh", icon:"st.secondary.refresh-icon", nextState: "Active", backgroundColor: "#ffffff", defaultState: true
-            state "Active", label:'refresh', action:"refresh", icon:"st.secondary.refresh-icon", nextState: "Idle", backgroundColor: "#cccccc", defaultState: false
-    	}      
       
-        valueTile("Pump 1", "device.Pump 1", width: 3, height: 4, decoration: "flat", canChangeBackground: false) {
-			state "val", label:'${currentValue}', defaultState: true
-		}  
-        
+        valueTile("pump", "device.pump", width: 6, height: 4, decoration: "flat", canChangeBackground: false) {
+			state "value", label:'${currentValue}'
+		}
+             
        
         //////////////////////////////////////////////////        
         main(["switch"])
 
-        details(["switch","refresh1","Pump 1"])
+        details(["switch","pump"])
 	}
 }
 
 def initialize() {
-	runEvery1Minute(refresh)
-
-    //sendHubCommand(setFeature("/all"))
-        
+	runEvery1Minute(refresh)       
 }
 
 def refresh() {
-    setDebugFlags(true)
-	if (state.debug_all) log.warn "Requested a refresh"
-    //poll()
-	sendEvent(name: "refresh1", isStateChange: "true", value: "Active", descriptionText: "Refresh was activated")
+	log.warn "Requested a refresh"
     sendHubCommand(setFeature("/pump"))
 }
 
-def poll() {
-	// poll gets /all & /device status messages from pool controller (raspberry Pi)
-    // this runs every minute
-    sendHubCommand(setFeature("/all"))
-}
-
-def setDebugFlags(value) {
-    state.debug_all = value
-}
-
 def updated() {
-    if (state.debug_all) log.info "######### UPDATED #########" 
-    state.eggTimerORschedule = eggTimerORschedule
-    
-    setDebugFlags(false)
-    switch (adebug) {
-       case "ALL":
-          setDebugFlags(true)
-          break
-       case "PARSE":
-          state.debug_parse = true
-          break    
-       case "PUMP":
-          state.debug_pump = true
-          break      
-       case "POOL":
-          state.debug_pool = true
-          state.debug_parse = true
-          break
-       default:
-          setDebugFlags(false)
-    }      
-          
-    initialize()
-    refresh()
-    
+	log.info "######### UPDATED #########"         
     setDeviceNetworkId("${controllerIP}","${controllerPort}")
+    sendHubCommand(setFeature("/pumpCommand/save/pump/1/program/1/rpm/${SpeedPreset1}"))
+    sendHubCommand(setFeature("/pumpCommand/save/pump/1/program/2/rpm/${SpeedPreset2}"))
+    sendHubCommand(setFeature("/pumpCommand/save/pump/1/program/3/rpm/${SpeedPreset3}"))
+    sendHubCommand(setFeature("/pumpCommand/save/pump/1/program/4/rpm/${SpeedPreset4}"))
 //    addChildren()
 }
 
 def installed() {
-	if (state.debug_all) log.info "########## installed ###########"
-
-//    setDeviceNetworkId("${controllerIP}","${controllerPort}")
-    initialize()
-
-//    state.counter = state.counter ? state.counter + 1 : 1
-//	if (state.counter == 1) {
-
+	log.info "########## installed ###########"
+	initialize()
 }
 
 //def addChildren() {
@@ -166,12 +110,9 @@ def parse(String description) {
              
     def msg = parseLanMessage(description)
     if (!msg) {
-       sendEvent(name: "refresh1", isStateChange: "true", value: "Idle", descriptionText: "Refresh was activated")
-       //return null
+       return null
     }
-    
-    //log.debug msg
-    
+
     def xmlerror = msg.xmlError
     if (xmlerror) {
        log.error "Error: ${xmlerror}"
@@ -190,44 +131,59 @@ def parse(String description) {
         def name = body.device.friendlyName
         state.version = "${name} Version\n${verMajor}.${verMinor}.${verPatch}"
         state.manufacturer = "By ${manufacturer}\n${modelDescription}"
-        sendEvent(name: "refresh", isStateChange: "true", value: "Idle", descriptionText: "Refresh was activated")
         return null
-    }    
-   
+    }  
+	   
     // process json messages
     def json = msg.data
     log.warn "json = ${json}"
-    
+    log.warn "msg = ${msg}"
+    log.warn "description = ${description}"
+
     // return if no json
     if (!json) {
-       sendEvent(name: "refresh", isStateChange: "true", value: "Idle", descriptionText: "Refresh was activated")
-       return null
+		log.warn "No Json"
+		return null
     }   
     
+    try {
     // process each json key 
     json.keySet().each() {
       def key = it
       log.warn key
       switch (key) {
         case "value":
-              if (state.debug_parse) log.warn "value = ${json.value}"
+              log.warn "value = ${json.value}"
               break
         case "pump":      
-//              if (state.debug_pump) log.info "### parse : pumps ###"
+			  log.info "### parse : pumps ###"
               def pumps = json.pump
               pumps.keySet().each {
                   def pump = pumps[it]
                   log.debug "pump ${it} = ${pump}"           
                   log.info "Pump name = " + pump.name
                   log.info "friendlyName = " + pump.friendlyName
-                  sendEvent(name: "${pump.name}", value: "${pump.friendlyName}\n---Pump---\nWatts :${pump.watts} \nRPM :${pump.rpm} \nError :${pump.err}\nState :${pump.drivestate}\nMode :${pump.run}")
-					}
+                  log.info "pump rpm = " + pump.rpm
+                  //sendEvent(name: "${pump.name}", value: "${pump.friendlyName}\n---Pump---\nWatts :${pump.watts} \nRPM :${pump.rpm} \nError :${pump.err}\nState :${pump.drivestate}\nMode :${pump.run}")
+                  sendEvent(name: "pump", value: "${pump.friendlyName}\n---Pump---\nWatts :${pump.watts} \nRPM :${pump.rpm} \nError :${pump.err}\nState :${pump.drivestate}\nMode :${pump.run}")
                   
+                  if (pump.rpm > 0) { sendEvent(name: "switch", value: "on")}
+                  else { sendEvent(name: "switch", value: "off")}
+                  
+                  if (pump.rpm > 0) { log.debug "Evaluated RPM above zero" }
+                  else { log.debug "Evaluated RPM at Zero" }
+			  }    
               break
         default:
             log.info "### parse : default ###"
             log.info "key = ${key}"   
    		}
+   }
+   }
+   catch (e)
+   {
+   		log.warn "Exception Occurred: ${e}"
+        log.warn description
    }
 }
 
@@ -241,6 +197,7 @@ def off() {
 
 def on() {
 	sendHubCommand(setFeature("/pumpCommand/run/pump/1/duration/-1"))
+//    sendHubCommand(setFeature("/pumpCommand/run/pump/1/program/1"))
 }
 
 //def childOn(dni) {
